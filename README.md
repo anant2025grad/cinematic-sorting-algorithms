@@ -6,11 +6,11 @@ Each algorithm is inspired by a well-known film character whose fictional behavi
 
 > Created for the John R. Chapin Undergraduate Exhibition 2026 — The Pennsylvania State University
 
-\---
+
 
 ## What's Inside
 
-```
+
 cinematic-sorting-algorithms/
 ├── webVisualizer.html
 
@@ -21,11 +21,10 @@ cinematic-sorting-algorithms/
 ├── WallESort.java
 ├── AntonChigurhSort.java
 
-\---
 
-## The Algorithms
+# The Algorithms
 
-### Thanos Sort
+# Thanos Sort
 
 > \\\*"Perfectly balanced, as all things should be."\\\*
 
