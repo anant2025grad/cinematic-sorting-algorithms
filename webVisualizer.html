@@ -84,7 +84,7 @@
 
     #barChart {
       display: flex;
-      align-items: flex-end;
+      align-items: flex-end;   /* bars grow upward from the bottom */
       gap: 3px;
       height: 260px;
       background: #2a2a2a;
@@ -95,7 +95,7 @@
     }
 
     .bar {
-      flex: 1;
+      flex: 1;              /* each bar shares the available width equally */
       min-width: 3px;
       background: #4a9eff;
       border-radius: 2px 2px 0 0;
@@ -113,9 +113,10 @@
       color: #ccc;
     }
 
-    #logBox .highlight { color: #4a9eff; }
-    #logBox .done      { color: #4ecb71; }
-    #logBox .warn      { color: #dc143c; }
+    /* log line color classes */
+    #logBox .highlight { color: #4a9eff; }  /* step progress */
+    #logBox .done      { color: #4ecb71; }  /* finished */
+    #logBox .warn      { color: #f0c040; }  /* warnings / lossy notes */
 
     .complexity-box {
       margin-top: 12px;
@@ -130,69 +131,6 @@
     }
 
     .complexity-box span b { color: #f0f0f0; }
-
-    /* ── Light Mode ───────────────────────────── */
-
-    body.light-mode {
-      background: #f5f5f5;
-      color: #111;
-    }
-
-    /* FIX: subtitle visibility */
-    body.light-mode p.subtitle {
-      color: #444;
-    }
-
-    body.light-mode .info-row span b {
-      color: #111;
-    }
-
-    body.light-mode .controls label {
-      color: #111;
-    }
-
-    body.light-mode .info-row {
-      color: #111;
-    }
-
-    body.light-mode .complexity-box span b {
-      color: #111;
-    }
-
-    body.light-mode .complexity-box {
-      color: #111;
-    }
-
-    body.light-mode .quote-box {
-      background: #ffffff;
-      color: #333;
-      border-left-color: #4a9eff;
-    }
-
-    body.light-mode #barChart {
-      background: #ffffff;
-      border: 1px solid #ccc;
-    }
-
-    body.light-mode #logBox {
-      background: #ffffff;
-      color: #111;
-      border: 1px solid #ccc;
-    }
-
-    body.light-mode .complexity-box {
-      background: #ffffff;
-      color: #111;
-      border: 1px solid #ccc;
-    }
-
-    body.light-mode select,
-    body.light-mode input,
-    body.light-mode button {
-      background: #ffffff;
-      color: #111;
-      border: 1px solid #ccc;
-    }
   </style>
 </head>
 <body>
@@ -214,22 +152,25 @@
   </div>
   <div>
     <label>Array size:</label><br/>
+    <!-- Number of elements to sort. Clamped between 5 and 50. -->
     <input type="number" id="sizeInput" value="20" min="5" max="50" style="width:60px"/>
   </div>
   <div>
     <label>Speed:</label><br/>
+    <!-- Higher value = shorter delay between steps = faster animation -->
     <input type="range" id="speedSlider" min="1" max="10" value="6" style="width:90px; accent-color:#4a9eff"/>
   </div>
   <div style="margin-top:18px">
     <button id="btnRun">&#9654; Run</button>
     <button id="btnStop">&#9632; Stop</button>
     <button id="btnNew">New Array</button>
-    <button id="btnTheme">Toggle Theme</button>
   </div>
 </div>
 
+<!-- Displays the cinematic quote for the selected algorithm -->
 <div class="quote-box" id="quoteBox">Select an algorithm and press Run.</div>
 
+<!-- Live counters updated throughout each algorithm's execution -->
 <div class="info-row">
   <span>Comparisons: <b id="statComps">0</b></span>
   <span>Swaps: <b id="statSwaps">0</b></span>
@@ -237,10 +178,13 @@
   <span>Status: <b id="statStatus">idle</b></span>
 </div>
 
+<!-- The bar chart area. Each element in arr becomes one vertical bar here. -->
 <div id="barChart"></div>
 
+<!-- Step-by-step log output; new lines are appended as each algorithm runs -->
 <div id="logBox"></div>
 
+<!-- Static complexity metadata for the currently selected algorithm -->
 <div class="complexity-box">
   <span>Time (avg): <b id="cTime">—</b></span>
   <span>Worst case: <b id="cWorst">—</b></span>
@@ -250,68 +194,113 @@
 </div>
 
 <script>
+  // ── Algorithm metadata ─────────────────────────────────────────
+  // Each entry holds the cinematic quote and complexity info shown in the UI.
+  // "Lossy: Yes" means the algorithm may discard elements (e.g. Thanos Sort).
   const ALGO_INFO = {
     thanos:       { quote: '"Perfectly balanced, as all things should be."',
-      time: 'O(n log n)', worst: 'O(n log n)', space: 'O(n)', lossy: 'Yes',
-      base: 'Halving/Elimination' },
+                    time: 'O(n log n)', worst: 'O(n log n)', space: 'O(n)', lossy: 'Yes',
+                    base: 'Halving/Elimination' },
     interstellar: { quote: '"Gravity pulls everything into order."',
-      time: 'O(n log n)', worst: 'O(n log n)', space: 'O(n)', lossy: 'No',
-      base: 'Gravity-biased sort'  },
+                    time: 'O(n log n)', worst: 'O(n log n)', space: 'O(n)', lossy: 'No',
+                    base: 'Gravity-biased sort'  },
     t1000:        { quote: '"It reforms. It adapts. It always reaches its target."',
-      time: 'O(n^2)',     worst: 'O(n^2)',     space: 'O(1)', lossy: 'No',
-      base: 'Bubble Sort'          },
+                    time: 'O(n^2)',     worst: 'O(n^2)',     space: 'O(1)', lossy: 'No',
+                    base: 'Bubble Sort'          },
     yoda:         { quote: '"Do, or do not. There is no try."',
-      time: 'O(n log n)', worst: 'O(n log n)', space: 'O(n)', lossy: 'No',
-      base: 'Reverse + Flip'       },
+                    time: 'O(n log n)', worst: 'O(n log n)', space: 'O(n)', lossy: 'No',
+                    base: 'Reverse + Flip'       },
     walle:        { quote: '"Directive: organize. One piece at a time."',
-      time: 'O(n^2)',     worst: 'O(n^2)',     space: 'O(1)', lossy: 'No',
-      base: 'Selection Sort'       },
+                    time: 'O(n^2)',     worst: 'O(n^2)',     space: 'O(1)', lossy: 'No',
+                    base: 'Selection Sort'       },
     chigurh:      { quote: '"What\'s the most you ever lost on a coin toss?"',
-      time: 'O(inf)',     worst: 'O(inf)',     space: 'O(1)', lossy: 'No',
-      base: 'Bogosort/Coin-flip'   },
+                    time: 'O(inf)',     worst: 'O(inf)',     space: 'O(1)', lossy: 'No',
+                    base: 'Bogosort/Coin-flip'   },
   };
 
-  let arr = [], stopFlag = false, running = false;
-  let comps = 0, swaps = 0, passes = 0;
+  // ── Global state ───────────────────────────────────────────────
+  let arr = [];         // the array currently being sorted and displayed
+  let stopFlag = false; // set to true when the Stop button is pressed
+  let running = false;  // prevents multiple algorithms running simultaneously
+  let comps = 0, swaps = 0, passes = 0; // live counters shown in the info row
 
+  // ── Helpers ────────────────────────────────────────────────────
   const $ = id => document.getElementById(id);
+
+  // Returns a Promise that resolves after `ms` milliseconds.
+  // Used throughout the algorithms to pause between steps so the
+  // user can see each comparison/swap animate on screen.
   const delay = ms => new Promise(r => setTimeout(r, ms));
+
+  // Converts the speed slider (1–10) into a millisecond delay.
+  // Slider at 1  → 347ms per step (slow)
+  // Slider at 10 →  20ms per step (fast)
   const getSpeed = () => Math.max(20, 380 - parseInt($('speedSlider').value) * 33);
+
+  // Reads the array-size input and clamps it to the valid range [5, 50].
   const getSize  = () => Math.min(50, Math.max(5, parseInt($('sizeInput').value) || 20));
 
+  // ── Array generation ───────────────────────────────────────────
+  // Builds an array of n random integers, each between 10 and 99.
+  // Math.random() produces a float in [0, 1).
+  // Multiplying by 90 scales that to [0, 90), then adding 10 shifts
+  // the range to [10, 100) before Math.floor() drops the decimal.
+  // This keeps bar heights reasonably balanced — no single-pixel bars.
   function randomArr(n) {
     return Array.from({ length: n }, () => Math.floor(Math.random() * 90) + 10);
   }
 
+  // ── Bar chart rendering ────────────────────────────────────────
+  // Redraws every bar from scratch on each call.
+  // `highlights` is an optional object mapping index → CSS color string,
+  // used to color specific bars during comparisons or swaps.
+  // e.g. { 3: '#e05050', 4: '#e05050' } turns bars 3 and 4 red.
   function renderBars(highlights) {
     highlights = highlights || {};
     const chart = $('barChart');
-    const max = Math.max.apply(null, arr);
-    chart.innerHTML = '';
+    const max = Math.max.apply(null, arr); // tallest value sets the scale
+
+    chart.innerHTML = ''; // clear previous bars before redrawing
+
     for (var i = 0; i < arr.length; i++) {
       var bar = document.createElement('div');
       bar.className = 'bar';
+
+      // Proportional height: the tallest bar fills 230px, all others scale
+      // relative to it. Math.max(..., 4) ensures even tiny values are visible.
+      // Formula: (value / max) * 230px
+      // Example: value=50, max=100 → (50/100)*230 = 115px tall
       bar.style.height = Math.max(4, Math.round((arr[i] / max) * 230)) + 'px';
+
+      // Use the highlight color if one is specified for this index,
+      // otherwise fall back to the default blue.
       bar.style.background = highlights[i] || '#4a9eff';
+
       chart.appendChild(bar);
     }
   }
 
+  // ── Log output ─────────────────────────────────────────────────
+  // Appends a new line to the scrolling log box at the bottom of the page.
+  // `cls` is an optional CSS class: 'highlight', 'done', or 'warn'.
   function log(msg, cls) {
     var box = $('logBox');
     var line = document.createElement('div');
     if (cls) line.className = cls;
     line.textContent = msg;
     box.appendChild(line);
-    box.scrollTop = box.scrollHeight;
+    box.scrollTop = box.scrollHeight; // auto-scroll to the newest line
   }
 
+  // ── Stat counters ──────────────────────────────────────────────
+  // Pushes the current comps/swaps/passes values into the info row in the DOM.
   function updateStats() {
     $('statComps').textContent  = comps;
     $('statSwaps').textContent  = swaps;
     $('statPasses').textContent = passes;
   }
 
+  // Resets all counters to zero and clears the log box between runs.
   function resetStats() {
     comps = swaps = passes = 0;
     updateStats();
@@ -319,6 +308,9 @@
     $('statStatus').textContent = 'idle';
   }
 
+  // ── Algorithm metadata loader ──────────────────────────────────
+  // Reads the selected algorithm key and populates the quote box
+  // and complexity table at the bottom of the page.
   function loadAlgoInfo() {
     var key  = $('algoSelect').value;
     var info = ALGO_INFO[key];
@@ -330,8 +322,12 @@
     $('cBase').textContent    = info.base;
   }
 
-  // ── Algorithms ──────────────────────────────
+  // ── Algorithms ──────────────────────────────────────────────────
 
+  // THANOS SORT
+  // Repeatedly sorts the array, then eliminates the bottom half.
+  // Lossy: elements are permanently removed each pass.
+  // Continues until 2 or fewer elements remain.
   async function thanosSort() {
     log('Thanos surveys the universe...');
     log('"Perfectly balanced, as all things should be."');
@@ -341,8 +337,12 @@
       passes++;
       var sorted = arr.slice().sort(function(a,b){ return a-b; });
       var half = Math.floor(sorted.length / 2);
+
+      // Keep only the upper half (larger values survive)
       var survivors = sorted.slice(half);
-      var deadVals = sorted.slice(0, half);
+      var deadVals  = sorted.slice(0, half);
+
+      // Color doomed elements red, survivors blue
       var hl = {};
       for (var i = 0; i < arr.length; i++) {
         hl[i] = deadVals.indexOf(arr[i]) >= 0 ? '#e05050' : '#4a9eff';
@@ -350,7 +350,8 @@
       comps += arr.length; updateStats();
       renderBars(hl);
       await delay(getSpeed() * 2);
-      arr = survivors;
+
+      arr = survivors; // discard the lower half permanently
       renderBars({});
       log('Pass ' + passes + ': ' + arr.length + ' survivors -> [' + arr.join(', ') + ']', 'highlight');
       await delay(getSpeed());
@@ -359,13 +360,18 @@
     log('Note: Thanos Sort is lossy -- not all elements survive.', 'warn');
   }
 
+  // INTERSTELLAR SORT
+  // Finds the median as a "gravity well", pulls all elements toward it
+  // by sorting by distance from the median, then settles into ascending order.
   async function interstellarSort() {
     var sorted = arr.slice().sort(function(a,b){ return a-b; });
-    var well = sorted[Math.floor(sorted.length / 2)];
+    var well = sorted[Math.floor(sorted.length / 2)]; // median = gravity well
     log('Gravity well = ' + well + ' (median)');
     comps += arr.length; passes = 1; updateStats();
     await delay(getSpeed());
 
+    // Pass 1: sort by closeness to the median.
+    // Elements nearest the center cluster together first.
     arr.sort(function(a, b) {
       var da = Math.abs(a - well), db = Math.abs(b - well);
       return da !== db ? da - db : a - b;
@@ -374,33 +380,50 @@
     log('Pulled toward gravity well: [' + arr.join(', ') + ']', 'highlight');
     await delay(getSpeed() * 3);
 
+    // Pass 2: final ascending sort to settle into proper order.
     arr.sort(function(a,b){ return a-b; });
     passes = 2; swaps += arr.length; updateStats();
     renderBars({});
     log('Settled into orbit (ascending): [' + arr.join(', ') + ']', 'done');
   }
 
+  // T-1000 SORT (Bubble Sort)
+  // Repeatedly steps through the array, comparing adjacent pairs and
+  // swapping them if they are out of order. After each full pass,
+  // the largest unsorted element has "bubbled" to its final position.
+  // Stops early if a full pass completes with no swaps (already sorted).
   async function t1000Sort() {
     log('T-1000 begins reforming...');
     await delay(getSpeed());
     var swapped = true;
     while (swapped && !stopFlag) {
-      swapped = false; passes++;
+      swapped = false;
+      passes++;
+      // Each pass only needs to go up to arr.length - passes
+      // because the last `passes` elements are already in their final positions.
       for (var i = 0; i < arr.length - passes; i++) {
         if (stopFlag) break;
         comps++;
+
+        // Highlight the two elements being compared in red
         var hl = {}; hl[i] = '#e05050'; hl[i+1] = '#e05050';
         renderBars(hl);
         await delay(getSpeed());
+
         if (arr[i] > arr[i+1]) {
+          // Swap out-of-order neighbors
           var tmp = arr[i]; arr[i] = arr[i+1]; arr[i+1] = tmp;
           swaps++; swapped = true;
+
+          // Highlight swapped elements in yellow
           var hl2 = {}; hl2[i] = '#f0c040'; hl2[i+1] = '#f0c040';
           renderBars(hl2);
           await delay(getSpeed());
         }
         updateStats();
       }
+
+      // Color the newly settled tail green to show it's in final position
       var hl3 = {};
       for (var k = arr.length - passes; k < arr.length; k++) hl3[k] = '#4ecb71';
       renderBars(hl3);
@@ -410,15 +433,22 @@
     log('T-1000 locked into final form: [' + arr.join(', ') + ']', 'done');
   }
 
+  // YODA SORT
+  // Sorts in descending order first (Yoda's backwards wisdom),
+  // identifies the median as "the Force center", then reverses
+  // the whole array to produce the final ascending result.
   async function yodaSort() {
     log('"Begun, the sorting has."');
+
+    // Step 1: sort descending (the "wrong" way first)
     arr.sort(function(a,b){ return b-a; });
     comps += arr.length; passes = 1; updateStats();
-    var hl = {}; hl[0] = '#e05050';
+    var hl = {}; hl[0] = '#e05050'; // highlight the current largest at index 0
     renderBars(hl);
     log('Descending first (Yoda\'s way): [' + arr.join(', ') + ']', 'highlight');
     await delay(getSpeed() * 4);
 
+    // Step 2: find and highlight the middle element as a dramatic pause
     var pivotIdx = Math.floor(arr.length / 2);
     var pivot = arr[pivotIdx];
     log('"The Force center I sense: ' + pivot + '"', 'warn');
@@ -426,32 +456,46 @@
     renderBars(hl2);
     await delay(getSpeed() * 3);
 
+    // Step 3: reverse to get ascending order — Yoda's "unlearn" moment
     arr.reverse();
     passes = 2; swaps += arr.length; updateStats();
     renderBars({});
     log('"Unlearn what you have learned." Result: [' + arr.join(', ') + ']', 'done');
   }
 
+  // WALL-E SORT (Selection Sort)
+  // On each pass, scans the unsorted portion of the array to find the
+  // smallest remaining element, then places it at the front of the
+  // unsorted section. Sorted elements accumulate at the left (shown in green).
   async function walleSort() {
     log('WALL-E starts stacking...');
     await delay(getSpeed());
+
     for (var i = 0; i < arr.length - 1 && !stopFlag; i++) {
       passes++;
-      var minIdx = i;
+      var minIdx = i; // assume the first unsorted element is the smallest
+
+      // Scan everything to the right of position i to find the true minimum
       for (var j = i + 1; j < arr.length; j++) {
         comps++;
         var hl = {};
-        for (var k = 0; k < i; k++) hl[k] = '#4ecb71';
-        hl[minIdx] = '#f0c040'; hl[j] = '#e05050';
+        for (var k = 0; k < i; k++) hl[k] = '#4ecb71'; // already-sorted region (green)
+        hl[minIdx] = '#f0c040'; // current best candidate (yellow)
+        hl[j]      = '#e05050'; // element being compared (red)
         renderBars(hl);
         await delay(Math.floor(getSpeed() * 0.4));
-        if (arr[j] < arr[minIdx]) minIdx = j;
+
+        if (arr[j] < arr[minIdx]) minIdx = j; // found a new minimum
         updateStats();
       }
+
+      // Swap the found minimum into position i
       if (minIdx !== i) {
         var tmp = arr[i]; arr[i] = arr[minIdx]; arr[minIdx] = tmp;
         swaps++;
       }
+
+      // Mark position i as sorted (green)
       var hl2 = {};
       for (var k2 = 0; k2 <= i; k2++) hl2[k2] = '#4ecb71';
       renderBars(hl2);
@@ -463,10 +507,16 @@
     log('WALL-E finished: [' + arr.join(', ') + ']', 'done');
   }
 
+  // ANTON CHIGURH SORT (Probabilistic Bogosort)
+  // On each pass, walks through adjacent pairs and flips a coin.
+  // Only swaps an out-of-order pair if the coin lands heads (50% chance).
+  // Continues until the array happens to be sorted, or hits the 1500-flip
+  // safety cap (at which point it gives up and sorts deterministically).
   async function chigurhSort() {
     log('"What\'s the most you ever lost on a coin toss?"');
     await delay(getSpeed() * 2);
 
+    // Helper: returns true only if the entire array is in ascending order
     function isSorted(a) {
       for (var i = 0; i < a.length - 1; i++) {
         if (a[i] > a[i+1]) return false;
@@ -474,30 +524,43 @@
       return true;
     }
 
-    var MAX = 1500, iter = 0;
+    var MAX = 1500; // safety cap — prevents infinite loops on larger arrays
+    var iter = 0;
+
     while (!isSorted(arr) && iter < MAX && !stopFlag) {
       iter++; passes++;
+
       for (var i = 0; i < arr.length - 1; i++) {
         comps++;
-        var heads = Math.random() < 0.5;
+        var heads = Math.random() < 0.5; // coin flip: true = heads
+
+        // Yellow = heads (swap candidate), red = tails (no action)
         var hl = {};
         hl[i]   = heads ? '#f0c040' : '#e05050';
         hl[i+1] = heads ? '#f0c040' : '#e05050';
         renderBars(hl);
+
+        // Only swap if coin is heads AND the pair is out of order
         if (heads && arr[i] > arr[i+1]) {
           var tmp = arr[i]; arr[i] = arr[i+1]; arr[i+1] = tmp;
           swaps++;
         }
         updateStats();
+
+        // Slow down only for the first few iterations so the coin-flip
+        // drama is visible; later iterations run much faster
         if (iter <= 4) await delay(Math.floor(getSpeed() * 0.4));
       }
+
+      // Log every flip for the first 6, then every 40th to avoid flooding
       if (iter <= 6 || iter % 40 === 0) {
         log('Flip ' + iter + ': [' + arr.join(', ') + ']' + (isSorted(arr) ? ' <- sorted!' : ''), isSorted(arr) ? 'done' : 'highlight');
       }
-      if (iter > 6) await delay(8);
+      if (iter > 6) await delay(8); // fast mode after the dramatic intro
     }
 
     if (!isSorted(arr)) {
+      // Safety fallback: Anton gets bored and just sorts it himself
       arr.sort(function(a,b){ return a-b; });
       renderBars({});
       log('Anton gave up after ' + iter + ' flips and sorted it himself.', 'warn');
@@ -508,50 +571,55 @@
     log('"The coin knows. It always knew."');
   }
 
-  // ── Button Handlers / Wiring ───────────────────────────────────
+  // ── Button handlers ────────────────────────────────────────────
 
+  // Update the quote and complexity table whenever a new algorithm is chosen
   $('algoSelect').onchange = loadAlgoInfo;
 
+  // Generate a fresh random array without running any algorithm
   $('btnNew').onclick = function() {
-    if (running) return;
+    if (running) return; // ignore if an algorithm is already in progress
     arr = randomArr(getSize());
     resetStats();
     renderBars({});
   };
 
+  // Signal the running algorithm to stop at its next stopFlag check
   $('btnStop').onclick = function() { stopFlag = true; };
 
+  // Main run handler: resets state, generates a new array, and
+  // dispatches to whichever algorithm is currently selected.
   $('btnRun').onclick = async function() {
-    if (running) return;
-    stopFlag = false; running = true;
+    if (running) return; // prevent double-starts
+    stopFlag = false;
+    running = true;
     $('btnRun').disabled = true;
     resetStats();
-    arr = randomArr(getSize());
+
+    arr = randomArr(getSize()); // fresh array for every run
     renderBars({});
     $('statStatus').textContent = 'running';
     loadAlgoInfo();
 
+    // Map algorithm keys to their respective functions
     var key = $('algoSelect').value;
     var fns = {
-      thanos: thanosSort,
+      thanos:       thanosSort,
       interstellar: interstellarSort,
-      t1000: t1000Sort,
-      yoda: yodaSort,
-      walle: walleSort,
-      chigurh: chigurhSort
+      t1000:        t1000Sort,
+      yoda:         yodaSort,
+      walle:        walleSort,
+      chigurh:      chigurhSort
     };
-    await fns[key]();
+    await fns[key](); // run the selected algorithm and wait for it to finish
 
     $('statStatus').textContent = stopFlag ? 'stopped' : 'done';
     running = false;
     $('btnRun').disabled = false;
   };
 
-  $('btnTheme').onclick = function () {
-    document.body.classList.toggle('light-mode');
-  };
-
-  // init
+  // ── Initialization ─────────────────────────────────────────────
+  // On page load: generate a starting array and render the initial bar chart
   arr = randomArr(getSize());
   loadAlgoInfo();
   renderBars({});
